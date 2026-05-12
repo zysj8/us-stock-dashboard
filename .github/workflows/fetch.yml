@@ -7,28 +7,28 @@ on:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 2  # 自动防卡死
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v5  # 升级版 → 无警告
+      - uses: actions/checkout@v5
         with:
-          fetch-depth: 0
-          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Python
-        uses: actions/setup-python@v5  # 升级版 → 无警告
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install requests beautifulsoup4
+        run: pip install requests
 
-      - name: Run crawler
+      - name: Run fetch
         run: python fetch.py
 
-      - name: Commit & Push
+      - name: Commit and push
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "actions@github.com"
-          git add data.json
-          git commit -m "Auto update market data" || echo "No changes"
-          git push origin HEAD:main
+          git config --global user.name "bot"
+          git config --global user.email "bot@github.com"
+          git add data.json log.json
+          git commit -m "update" || exit 0
+          git push
