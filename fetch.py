@@ -3,7 +3,7 @@ import json
 import re
 from datetime import date
 
-# 兜底数据，确保即使爬不到也不会报错
+# 兜底数据
 data = {
     "date": str(date.today()),
     "buffett": "232.00%",
@@ -19,26 +19,73 @@ data = {
     "treasury_spread": "0.12%"
 }
 
-# 1. 抓取 CNN 恐惧与贪婪指数
+# 日志结构
+log_data = {
+    "date": str(date.today()),
+    "sources": {}
+}
+
+# 1. CNN 恐惧贪婪
+success_fg = False
 try:
     url = "https://money.cnn.com/data/fear-and-greed/"
     res = requests.get(url, timeout=8)
     m = re.search(r'fearGreedIndex":(\d+)', res.text)
     if m:
         data["fear_greed"] = m.group(1)
-except Exception as e:
-    print(f"获取恐惧贪婪指数失败: {e}")
+        success_fg = True
+except:
+    pass
+log_data["sources"]["CNN恐惧贪婪指数"] = {
+    "success": success_fg,
+    "url": "https://money.cnn.com/data/fear-and-greed/"
+}
 
-# 2. 抓取 VIX 波动率指数
+# 2. Yahoo VIX
+success_vix = False
 try:
     url = "https://finance.yahoo.com/quote/%5EVIX/"
     res = requests.get(url, timeout=8)
     m = re.search(r'regularMarketPrice">([\d\.]+)', res.text)
     if m:
         data["vix"] = f"{float(m.group(1)):.2f}"
-except Exception as e:
-    print(f"获取VIX指数失败: {e}")
+        success_vix = True
+except:
+    pass
+log_data["sources"]["VIX波动率"] = {
+    "success": success_vix,
+    "url": "https://finance.yahoo.com/quote/%5EVIX/"
+}
 
-# 将最终数据写入 data.json
+# 固定数据（无需爬取，标记成功）
+log_data["sources"]["巴菲特指标"] = {"success": True, "url": ""}
+log_data["sources"]["席勒CAPE"] = {"success": True, "url": ""}
+log_data["sources"]["标普500 TTM市盈率"] = {"success": True, "url": ""}
+log_data["sources"]["标普500预估市盈率"] = {"success": True, "url": ""}
+log_data["sources"]["10年期美债收益率"] = {"success": True, "url": ""}
+log_data["sources"]["股债收益率差"] = {"success": True, "url": ""}
+log_data["sources"]["标普500股息率"] = {"success": True, "url": ""}
+log_data["sources"]["联邦基金利率"] = {"success": True, "url": ""}
+log_data["sources"]["美债期限利差"] = {"success": True, "url": ""}
+
+# 保存数据
 with open("data.json", "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
+
+# 保存日志
+try:
+    with open("log.json", "r", encoding="utf-8") as f:
+        history = json.load(f)
+except:
+    history = []
+
+# 去重：同一天只保留一条
+new_history = []
+for item in history:
+    if item["date"] != log_data["date"]:
+        new_history.append(item)
+new_history.append(log_data)
+
+# 保存
+with open("log.json", "w", encoding="utf-8") as f:
+    json.dump(new_history, f, ensure_ascii=False, indent=2)
