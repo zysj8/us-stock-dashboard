@@ -3,36 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>美股晴雨表 - 全自动仓位版</title>
+    <title>美股晴雨表 - 稳定版</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         *{box-sizing:border-box;margin:0;padding:0;}
         body{font-family:"Microsoft YaHei",sans-serif;max-width:1200px;margin:0 auto;padding:20px;background:#f4f6f8;}
         h1{text-align:center;color:#222;margin-bottom:10px;}
         .info{text-align:center;color:#666;margin-bottom:15px;}
-
-        /* 仓位指示灯 */
-        .仓位-box{
-            max-width:600px;
-            margin:0 auto 25px;
-            padding:15px;
-            background:#fff;
-            border-radius:12px;
-            box-shadow:0 2px 8px rgba(0,0,0,0.1);
-            text-align:center;
-        }
+        .仓位-box{max-width:600px;margin:0 auto 25px;padding:15px;background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);text-align:center;}
         .仓位-title{font-size:16px;color:#555;margin-bottom:10px;}
         .lights{display:flex;justify-content:center;gap:12px;margin-bottom:10px;}
-        .light{
-            width:36px;height:36px;border-radius:50%;
-            background:#ddd;
-            border:2px solid #ccc;
-        }
+        .light{width:36px;height:36px;border-radius:50%;background:#ddd;border:2px solid #ccc;}
         .light.active-红{background:#d32f2f;box-shadow:0 0 10px #d32f2f;}
         .light.active-黄{background:#f57c00;box-shadow:0 0 10px #f57c00;}
         .light.active-绿{background:#388e3c;box-shadow:0 0 10px #388e3c;}
         .仓位-text{font-size:18px;font-weight:bold;color:#333;}
-
         table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);margin-bottom:30px;}
         th,td{padding:12px 15px;text-align:left;border-bottom:1px solid #eee;}
         th{background:#f8f9fa;color:#333;}
@@ -40,8 +25,6 @@
         .mid{background:#fff3e0;color:#f57c00;font-weight:bold;}
         .ok{background:#e8f5e9;color:#388e3c;font-weight:bold;}
         .chart-box{background:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);}
-        .loading{text-align:center;padding:40px;font-size:18px;color:#888;}
-
         @media (max-width:768px){
             body{padding:10px;}
             table,thead,tbody,th,td,tr{display:block;}
@@ -61,7 +44,6 @@
     <h1>美股晴雨表</h1>
     <div class="info" id="updateTime">数据加载中...</div>
 
-    <!-- 新增：仓位指示灯区域 -->
     <div class="仓位-box">
         <div class="仓位-title">市场综合仓位信号</div>
         <div class="lights">
@@ -72,9 +54,7 @@
         <div class="仓位-text" id="posText">计算中...</div>
     </div>
 
-    <div class="loading" id="loadingTip">正在自动抓取实时行情数据...</div>
-
-    <table id="dataTable" style="display:none;">
+    <table id="dataTable">
         <thead>
             <tr>
                 <th>指标名称</th>
@@ -87,110 +67,32 @@
         <tbody id="tableBody"></tbody>
     </table>
 
-    <div class="chart-box" id="chartBox" style="display:none;">
+    <div class="chart-box">
         <h3 style="margin-bottom:15px;color:#333;">近一年关键指标趋势</h3>
         <canvas id="trendChart"></canvas>
     </div>
 
 <script>
-// 指标配置：中枢、阈值、判断规则、状态文案
 const metaConfig = [
-  {
-    name:"巴菲特指标(总市值/GDP)",
-    center:"110%",
-    threshold:"＞150%高估",
-    rule:v=>parseFloat(v)>150?"high":parseFloat(v)>110?"mid":"ok",
-    descMap:{high:"极度高估 历史高位",mid:"中度高估",ok:"合理区间"}
-  },
-  {
-    name:"标普500 席勒CAPE",
-    center:"16.0倍",
-    threshold:"＞30倍高估",
-    rule:v=>parseFloat(v)>30?"high":parseFloat(v)>20?"mid":"ok",
-    descMap:{high:"泡沫级估值 历史高位",mid:"估值偏高",ok:"估值合理"}
-  },
-  {
-    name:"标普500 TTM市盈率",
-    center:"16.2倍",
-    threshold:"＞22倍偏高",
-    rule:v=>parseFloat(v)>22?"high":parseFloat(v)>18?"mid":"ok",
-    descMap:{high:"估值昂贵 偏离均值",mid:"小幅溢价",ok:"估值正常"}
-  },
-  {
-    name:"标普500 预估市盈率",
-    center:"17.2倍",
-    threshold:"＞20倍溢价",
-    rule:v=>parseFloat(v)>20?"high":parseFloat(v)>18?"mid":"ok",
-    descMap:{high:"远期定价过热",mid:"轻微溢价",ok:"盈利预期合理"}
-  },
-  {
-    name:"美国10年期国债收益率",
-    center:"3.50%",
-    threshold:"＞4.0%高位",
-    rule:v=>parseFloat(v)>4.0?"high":parseFloat(v)>3.5?"mid":"ok",
-    descMap:{high:"利率高位 压制股市",mid:"利率中性偏高",ok:"利率温和"}
-  },
-  {
-    name:"股债收益率差(股息-10Y美债)",
-    center:"+1.00%",
-    threshold:"＜0%股弱债强",
-    rule:v=>parseFloat(v)<0?"high":parseFloat(v)<1?"mid":"ok",
-    descMap:{high:"债券性价比远优于股票",mid:"股债均衡",ok:"股票性价比占优"}
-  },
-  {
-    name:"VIX波动率指数",
-    center:"20.00",
-    threshold:"＞30恐慌/＜12麻木",
-    rule:v=>parseFloat(v)>30?"ok":parseFloat(v)<12?"mid":"ok",
-    descMap:{high:"市场恐慌升温",mid:"情绪麻木谨慎",ok:"波动中性平稳"}
-  },
-  {
-    name:"CNN恐惧与贪婪指数",
-    center:"50",
-    threshold:"＞75极度贪婪/＜25极度恐惧",
-    rule:v=>parseFloat(v)>75?"high":parseFloat(v)>60?"mid":"ok",
-    descMap:{high:"极度贪婪 情绪过热",mid:"贪婪区间",ok:"中性偏理性"}
-  }
+  {name:"巴菲特指标(总市值/GDP)",center:"110%",threshold:"＞150%高估",rule:v=>parseFloat(v)>150?"high":parseFloat(v)>110?"mid":"ok",descMap:{high:"极度高估 历史高位",mid:"中度高估",ok:"合理区间"}},
+  {name:"标普500 席勒CAPE",center:"16.0倍",threshold:"＞30倍高估",rule:v=>parseFloat(v)>30?"high":parseFloat(v)>20?"mid":"ok",descMap:{high:"泡沫级估值 历史高位",mid:"估值偏高",ok:"估值合理"}},
+  {name:"标普500 TTM市盈率",center:"16.2倍",threshold:"＞22倍偏高",rule:v=>parseFloat(v)>22?"high":parseFloat(v)>18?"mid":"ok",descMap:{high:"估值昂贵 偏离均值",mid:"小幅溢价",ok:"估值正常"}},
+  {name:"标普500 预估市盈率",center:"17.2倍",threshold:"＞20倍溢价",rule:v=>parseFloat(v)>20?"high":parseFloat(v)>18?"mid":"ok",descMap:{high:"远期定价过热",mid:"轻微溢价",ok:"盈利预期合理"}},
+  {name:"美国10年期国债收益率",center:"3.50%",threshold:"＞4.0%高位",rule:v=>parseFloat(v)>4.0?"high":parseFloat(v)>3.5?"mid":"ok",descMap:{high:"利率高位 压制股市",mid:"利率中性偏高",ok:"利率温和"}},
+  {name:"股债收益率差(股息-10Y美债)",center:"+1.00%",threshold:"＜0%股弱债强",rule:v=>parseFloat(v)<0?"high":parseFloat(v)<1?"mid":"ok",descMap:{high:"债券性价比远优于股票",mid:"股债均衡",ok:"股票性价比占优"}},
+  {name:"VIX波动率指数",center:"20.00",threshold:"＞30恐慌/＜12麻木",rule:v=>parseFloat(v)>30?"ok":parseFloat(v)<12?"mid":"ok",descMap:{high:"市场恐慌升温",mid:"情绪麻木谨慎",ok:"波动中性平稳"}},
+  {name:"CNN恐惧与贪婪指数",center:"50",threshold:"＞75极度贪婪/＜25极度恐惧",rule:v=>parseFloat(v)>75?"high":parseFloat(v)>60?"mid":"ok",descMap:{high:"极度贪婪 情绪过热",mid:"贪婪区间",ok:"中性偏理性"}}
 ];
 
-// 兜底静态数据（接口失败时自动备用）
-let baseData = [
-  "241.70%","39.50","28.10","21.50","4.35%","-0.80%","16.20","74"
-];
-
-// 近一年趋势固定坐标
+// 使用你提供的最新数据
+const baseData = ["232%","39.74","31.83","20.86","4.42%","-3.36%","18.38","67.00"];
 const monthLabels = ["2025-05","2025-06","2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04"];
-let capeTrend = [32,33,34,35,36,37,38,38.5,39,39.2,39.5,39.74];
-let vixTrend = [22,25,20,18,16,17,19,21,23,20,19,18.38];
-let fgTrend = [45,50,55,60,62,65,68,70,68,65,66,74];
+const capeTrend = [32,33,34,35,36,37,38,38.5,39,39.2,39.5,39.74];
+const vixTrend = [22,25,20,18,16,17,19,21,23,20,19,18.38];
+const fgTrend = [45,50,55,60,62,65,68,70,68,65,66,67];
 
-// 跨域代理
-const proxy = url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-
-// 抓取CNN恐惧贪婪
-async function fetchFearGreed(){
-  try{
-    let res = await fetch(proxy("https://money.cnn.com/data/fear-and-greed/"));
-    let text = await res.text();
-    let match = text.match(/fearGreedIndex\":(\d+)/);
-    return match ? match[1] : 74;
-  }catch(e){return 74;}
-}
-
-// 抓取VIX
-async function fetchVIX(){
-  try{
-    let res = await fetch(proxy("https://finance.yahoo.com/quote/%5EVIX/"));
-    let text = await res.text();
-    let m = text.match(/regularMarketPrice\">([\d\.]+)/);
-    return m ? m[1] : 16.20;
-  }catch(e){return 16.20;}
-}
-
-// 计算综合仓位 & 红绿灯
 function calcPosition(){
     let score = 0;
-    // 提取关键数值
     let buffett = parseFloat(baseData[0]);
     let cape = parseFloat(baseData[1]);
     let peTTM = parseFloat(baseData[2]);
@@ -198,49 +100,37 @@ function calcPosition(){
     let spread = parseFloat(baseData[5]);
     let fg = parseFloat(baseData[7]);
 
-    // 打分规则
     if(buffett > 150) score += 2;
     else if(buffett > 110) score += 1;
-
     if(cape > 30) score += 2;
     else if(cape > 20) score += 1;
-
     if(peTTM > 22) score += 1;
-
     if(yield10Y > 4.0) score += 1;
-
     if(spread < 0) score += 2;
-
     if(fg > 75) score += 2;
     else if(fg > 60) score += 1;
 
-    // 重置所有灯
     document.getElementById("lightGreen").className = "light";
     document.getElementById("lightYellow").className = "light";
     document.getElementById("lightRed").className = "light";
 
     let posText = "";
     if(score <= 2){
-        // 绿灯：可激进
         document.getElementById("lightGreen").className = "light active-绿";
         posText = "当前信号：激进仓位 8~9成";
     }else if(score <= 5){
-        // 黄灯：中性
         document.getElementById("lightYellow").className = "light active-黄";
         posText = "当前信号：中性仓位 5~6成";
     }else if(score <= 7){
-        // 橙红：谨慎
         document.getElementById("lightYellow").className = "light active-黄";
         posText = "当前信号：谨慎仓位 2~3成";
     }else{
-        // 红灯：防守/空仓
         document.getElementById("lightRed").className = "light active-红";
         posText = "当前信号：防守观望 0~1成";
     }
     document.getElementById("posText").innerText = posText;
 }
 
-// 渲染表格
 function renderTable(data){
   const tbody = document.getElementById("tableBody");
   tbody.innerHTML = "";
@@ -262,7 +152,6 @@ function renderTable(data){
   }
 }
 
-// 渲染趋势图
 function renderChart(){
   const ctx = document.getElementById("trendChart").getContext("2d");
   new Chart(ctx,{
@@ -279,31 +168,13 @@ function renderChart(){
   });
 }
 
-// 初始化入口
-async function init(){
-  // 并行拉取实时数据
-  let [fg, vix] = await Promise.all([fetchFearGreed(), fetchVIX()]);
-  
-  // 替换实时字段，其余保留兜底
-  baseData[6] = parseFloat(vix).toFixed(2);
-  baseData[7] = fg;
-
-  // 渲染页面
+window.onload = function(){
   let now = new Date();
   document.getElementById("updateTime").innerText = "最新数据："+now.toLocaleDateString();
-  
-  // 计算仓位信号
   calcPosition();
-
   renderTable(baseData);
   renderChart();
-
-  document.getElementById("loadingTip").style.display = "none";
-  document.getElementById("dataTable").style.display = "table";
-  document.getElementById("chartBox").style.display = "block";
 }
-
-init();
 </script>
 </body>
 </html>
