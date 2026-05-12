@@ -25,7 +25,7 @@ log_data = {
     "sources": {}
 }
 
-# 1. CNN 恐惧贪婪
+# 1. CNN 恐惧贪婪指数
 success_fg = False
 try:
     url = "https://money.cnn.com/data/fear-and-greed/"
@@ -34,14 +34,14 @@ try:
     if m:
         data["fear_greed"] = m.group(1)
         success_fg = True
-except:
-    pass
+except Exception as e:
+    print(f"恐惧贪婪指数拉取失败: {e}")
 log_data["sources"]["CNN恐惧贪婪指数"] = {
     "success": success_fg,
     "url": "https://money.cnn.com/data/fear-and-greed/"
 }
 
-# 2. Yahoo VIX
+# 2. Yahoo VIX 指数
 success_vix = False
 try:
     url = "https://finance.yahoo.com/quote/%5EVIX/"
@@ -50,14 +50,14 @@ try:
     if m:
         data["vix"] = f"{float(m.group(1)):.2f}"
         success_vix = True
-except:
-    pass
-log_data["sources"]["VIX波动率"] = {
+except Exception as e:
+    print(f"VIX指数拉取失败: {e}")
+log_data["sources"]["VIX波动率指数"] = {
     "success": success_vix,
     "url": "https://finance.yahoo.com/quote/%5EVIX/"
 }
 
-# 固定数据（无需爬取，标记成功）
+# 固定数据（标记为成功）
 log_data["sources"]["巴菲特指标"] = {"success": True, "url": ""}
 log_data["sources"]["席勒CAPE"] = {"success": True, "url": ""}
 log_data["sources"]["标普500 TTM市盈率"] = {"success": True, "url": ""}
@@ -68,24 +68,23 @@ log_data["sources"]["标普500股息率"] = {"success": True, "url": ""}
 log_data["sources"]["联邦基金利率"] = {"success": True, "url": ""}
 log_data["sources"]["美债期限利差"] = {"success": True, "url": ""}
 
-# 保存数据
+# 写入 data.json
 with open("data.json", "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
 
-# 保存日志
+# 写入 log.json（修复版，强制生成）
 try:
     with open("log.json", "r", encoding="utf-8") as f:
         history = json.load(f)
 except:
     history = []
 
-# 去重：同一天只保留一条
-new_history = []
-for item in history:
-    if item["date"] != log_data["date"]:
-        new_history.append(item)
+# 去重：同一天只保留一条记录
+new_history = [item for item in history if item["date"] != log_data["date"]]
 new_history.append(log_data)
 
-# 保存
+# 强制写入 log.json
 with open("log.json", "w", encoding="utf-8") as f:
     json.dump(new_history, f, ensure_ascii=False, indent=2)
+
+print("✅ 数据和日志写入完成！")
