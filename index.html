@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>美股晴雨表 - 稳定版</title>
+    <title>美股晴雨表 - 全自动定时版</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         *{box-sizing:border-box;margin:0;padding:0;}
@@ -25,6 +25,7 @@
         .mid{background:#fff3e0;color:#f57c00;font-weight:bold;}
         .ok{background:#e8f5e9;color:#388e3c;font-weight:bold;}
         .chart-box{background:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);}
+        .loading{text-align:center;padding:40px;font-size:18px;color:#888;}
         @media (max-width:768px){
             body{padding:10px;}
             table,thead,tbody,th,td,tr{display:block;}
@@ -42,7 +43,7 @@
 </head>
 <body>
     <h1>美股晴雨表</h1>
-    <div class="info" id="updateTime">数据加载中...</div>
+    <div class="info" id="updateTime">加载中...</div>
 
     <div class="仓位-box">
         <div class="仓位-title">市场综合仓位信号</div>
@@ -54,7 +55,9 @@
         <div class="仓位-text" id="posText">计算中...</div>
     </div>
 
-    <table id="dataTable">
+    <div class="loading" id="loadingTip">正在读取最新市场数据...</div>
+
+    <table id="dataTable" style="display:none;">
         <thead>
             <tr>
                 <th>指标名称</th>
@@ -67,7 +70,7 @@
         <tbody id="tableBody"></tbody>
     </table>
 
-    <div class="chart-box">
+    <div class="chart-box" id="chartBox" style="display:none;">
         <h3 style="margin-bottom:15px;color:#333;">近一年关键指标趋势</h3>
         <canvas id="trendChart"></canvas>
     </div>
@@ -84,12 +87,12 @@ const metaConfig = [
   {name:"CNN恐惧与贪婪指数",center:"50",threshold:"＞75极度贪婪/＜25极度恐惧",rule:v=>parseFloat(v)>75?"high":parseFloat(v)>60?"mid":"ok",descMap:{high:"极度贪婪 情绪过热",mid:"贪婪区间",ok:"中性偏理性"}}
 ];
 
-// 使用你提供的最新数据
-const baseData = ["232%","39.74","31.83","20.86","4.42%","-3.36%","18.38","67.00"];
 const monthLabels = ["2025-05","2025-06","2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04"];
-const capeTrend = [32,33,34,35,36,37,38,38.5,39,39.2,39.5,39.74];
-const vixTrend = [22,25,20,18,16,17,19,21,23,20,19,18.38];
-const fgTrend = [45,50,55,60,62,65,68,70,68,65,66,67];
+let capeTrend = [32,33,34,35,36,37,38,38.5,39,39.2,39.5,39.74];
+let vixTrend = [22,25,20,18,16,17,19,21,23,20,19,18.38];
+let fgTrend = [45,50,55,60,62,65,68,70,68,65,66,67];
+
+let baseData = [];
 
 function calcPosition(){
     let score = 0;
@@ -168,13 +171,23 @@ function renderChart(){
   });
 }
 
-window.onload = function(){
-  let now = new Date();
-  document.getElementById("updateTime").innerText = "最新数据："+now.toLocaleDateString();
+async function init(){
+  let res = await fetch("data.json");
+  let d = await res.json();
+  baseData = [
+    d.buffett, d.cape, d.pe_ttm, d.pe_forward,
+    d.tnx, d.spread, d.vix, d.fear_greed
+  ];
+  document.getElementById("updateTime").innerText = "统计日期：" + d.date;
   calcPosition();
   renderTable(baseData);
   renderChart();
+
+  document.getElementById("loadingTip").style.display = "none";
+  document.getElementById("dataTable").style.display = "table";
+  document.getElementById("chartBox").style.display = "block";
 }
+init();
 </script>
 </body>
 </html>
