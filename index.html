@@ -24,8 +24,20 @@
         .high{background:#ffe9e9;color:#d32f2f;font-weight:bold;}
         .mid{background:#fff3e0;color:#f57c00;font-weight:bold;}
         .ok{background:#e8f5e9;color:#388e3c;font-weight:bold;}
-        .chart-box{background:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);}
+        .chart-box{background:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);margin-bottom:30px;}
         .loading{text-align:center;padding:40px;font-size:18px;color:#888;}
+
+        /* 日志样式 */
+        .log-wrap{background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);padding:20px;}
+        .log-title{font-size:18px;font-weight:bold;color:#333;margin-bottom:15px;}
+        .log-card{border:1px solid #eee;border-radius:6px;padding:12px;margin-bottom:12px;}
+        .log-date{font-weight:bold;color:#444;margin-bottom:8px;}
+        .log-item{display:flex;align-items:center;margin:5px 0;font-size:15px;}
+        .log-status{width:22px;}
+        .log-name{flex:1;}
+        .log-link{color:#0066cc;text-decoration:none;}
+        .log-link:hover{text-decoration:underline;}
+
         @media (max-width:768px){
             body{padding:10px;}
             table,thead,tbody,th,td,tr{display:block;}
@@ -50,7 +62,7 @@
         <div class="仓位-title">市场综合仓位信号</div>
         <div class="lights">
             <div class="light" id="lightGreen"></div>
-            <div class="light" id="lightYellow"></div>
+            <div class="lightYellow"></div>
             <div class="light" id="lightRed"></div>
         </div>
         <div class="仓位-text" id="posText">计算中...</div>
@@ -74,6 +86,12 @@
     <div class="chart-box" id="chartBox" style="display:none;">
         <h3 style="margin-bottom:15px;color:#333;">近一年关键指标趋势（真实数据）</h3>
         <canvas id="trendChart"></canvas>
+    </div>
+
+    <!-- 首页底部：数据拉取日志 -->
+    <div class="log-wrap">
+        <div class="log-title">📋 每日数据拉取日志</div>
+        <div id="logContent">日志加载中...</div>
     </div>
 
 <script>
@@ -111,7 +129,7 @@ async function checkLastCommit() {
   } catch(e) {}
 }
 
-// ✅ 平衡中性版打分（最终版）
+// 平衡中性版打分
 function calcPosition(){
   let score = 0;
   let b = parseFloat(baseData[0]);
@@ -123,7 +141,6 @@ function calcPosition(){
   let div = parseFloat(baseData[8]);
   let fed = parseFloat(baseData[9]);
 
-  // 平衡中性打分
   if(b>150) score+=3; else if(b>120) score+=1;
   if(cape>30) score+=3; else if(cape>25) score+=1;
   if(pe>22) score+=2;
@@ -134,7 +151,7 @@ function calcPosition(){
   if(fed>5) score+=2;
 
   let g=document.getElementById("lightGreen");
-  let y=document.getElementById("lightYellow");
+  let y=document.querySelector(".lightYellow");
   let r=document.getElementById("lightRed");
   g.className=y.className=r.className="light";
 
@@ -179,6 +196,38 @@ function renderChart(){
   });
 }
 
+// 加载底部日志
+async function loadLog(){
+  let wrap = document.getElementById("logContent");
+  try{
+    let res = await fetch("log.json");
+    let logs = await res.json();
+    if(!logs || !logs.length){
+      wrap.innerHTML = "<div class='log-card'>暂无拉取日志</div>";
+      return;
+    }
+    let html = "";
+    logs.reverse().forEach(log=>{
+      html += `<div class="log-card">
+                <div class="log-date">📅 ${log.date}</div>`;
+      for(let name in log.sources){
+        let s = log.sources[name];
+        let icon = s.success ? "✅" : "❌";
+        let link = s.url ? `<a class="log-link" href="${s.url}" target="_blank">官方查询</a>` : "";
+        html += `<div class="log-item">
+                  <span class="log-status">${icon}</span>
+                  <span class="log-name">${name}</span>
+                  ${link}
+                </div>`;
+      }
+      html += `</div>`;
+    });
+    wrap.innerHTML = html;
+  }catch(e){
+    wrap.innerHTML = "<div class='log-card'>日志加载失败</div>";
+  }
+}
+
 async function init(){
   let res = await fetch("data.json");
   let d = await res.json();
@@ -188,6 +237,8 @@ async function init(){
   calcPosition();
   renderTable(baseData);
   renderChart();
+  loadLog();
+
   document.getElementById("loadingTip").style.display="none";
   document.getElementById("dataTable").style.display="table";
   document.getElementById("chartBox").style.display="block";
