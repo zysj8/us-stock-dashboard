@@ -27,7 +27,7 @@
         .chart-box{background:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);margin-bottom:30px;}
         .loading{text-align:center;padding:40px;font-size:18px;color:#888;}
 
-        /* 日志样式 */
+        /* 日志专用样式 */
         .log-wrap{background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);padding:20px;}
         .log-title{font-size:18px;font-weight:bold;color:#333;margin-bottom:15px;}
         .log-card{border:1px solid #eee;border-radius:6px;padding:12px;margin-bottom:12px;}
@@ -62,7 +62,7 @@
         <div class="仓位-title">市场综合仓位信号</div>
         <div class="lights">
             <div class="light" id="lightGreen"></div>
-            <div class="lightYellow"></div>
+            <div class="light" id="lightYellow"></div>
             <div class="light" id="lightRed"></div>
         </div>
         <div class="仓位-text" id="posText">计算中...</div>
@@ -88,7 +88,7 @@
         <canvas id="trendChart"></canvas>
     </div>
 
-    <!-- 首页底部：数据拉取日志 -->
+    <!-- 首页底部内嵌日志区域 -->
     <div class="log-wrap">
         <div class="log-title">📋 每日数据拉取日志</div>
         <div id="logContent">日志加载中...</div>
@@ -129,7 +129,7 @@ async function checkLastCommit() {
   } catch(e) {}
 }
 
-// 平衡中性版打分
+// 平衡中性打分
 function calcPosition(){
   let score = 0;
   let b = parseFloat(baseData[0]);
@@ -151,7 +151,7 @@ function calcPosition(){
   if(fed>5) score+=2;
 
   let g=document.getElementById("lightGreen");
-  let y=document.querySelector(".lightYellow");
+  let y=document.getElementById("lightYellow");
   let r=document.getElementById("lightRed");
   g.className=y.className=r.className="light";
 
@@ -196,14 +196,14 @@ function renderChart(){
   });
 }
 
-// 加载底部日志
+// 加载日志
 async function loadLog(){
   let wrap = document.getElementById("logContent");
   try{
     let res = await fetch("log.json");
     let logs = await res.json();
     if(!logs || !logs.length){
-      wrap.innerHTML = "<div class='log-card'>暂无拉取日志</div>";
+      wrap.innerHTML = "<div class='log-card'>暂无拉取日志，请先运行一次数据抓取任务</div>";
       return;
     }
     let html = "";
@@ -224,7 +224,7 @@ async function loadLog(){
     });
     wrap.innerHTML = html;
   }catch(e){
-    wrap.innerHTML = "<div class='log-card'>日志加载失败</div>";
+    wrap.innerHTML = "<div class='log-card'>暂无拉取日志，请先运行一次数据抓取任务</div>";
   }
 }
 
