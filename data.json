@@ -7,5 +7,8 @@
   "tnx": "4.42%",
   "spread": "-3.36%",
   "vix": "18.38",
-  "fear_greed": "67"
+  "fear_greed": "67",
+  "dividend": "1.52%",
+  "fed_rate": "5.50%",
+  "treasury_spread": "0.12%"
 }
