@@ -1,9 +1,7 @@
 import requests
 import json
-import re
 from datetime import date
 
-# 固定数据
 today = str(date.today())
 
 data = {
@@ -22,8 +20,8 @@ data = {
 }
 
 try:
-    url = "https://money.cnn.com/data/fear-and-greed/"
-    res = requests.get(url, timeout=7)
+    res = requests.get("https://money.cnn.com/data/fear-and-greed/", timeout=8)
+    import re
     m = re.search(r'fearGreedIndex":(\d+)', res.text)
     if m:
         data["fear_greed"] = m.group(1)
@@ -31,26 +29,29 @@ except:
     pass
 
 try:
-    url = "https://finance.yahoo.com/quote/%5EVIX/"
-    res = requests.get(url, timeout=7)
+    res = requests.get("https://finance.yahoo.com/quote/%5EVIX/", timeout=8)
+    import re
     m = re.search(r'regularMarketPrice">([\d\.]+)', res.text)
     if m:
         data["vix"] = f"{float(m.group(1)):.2f}"
 except:
     pass
 
-# 强制写 data.json
 with open("data.json", "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
 
-# ==========================================
-# 【强制写日志，100%生成】
-# ==========================================
-log_data = {
+# ====================== LOG 强制生成 ======================
+log_entry = {
     "date": today,
     "sources": {
-        "CNN恐惧贪婪指数": {"success": True, "url": "https://money.cnn.com/data/fear-and-greed/"},
-        "VIX波动率指数": {"success": True, "url": "https://finance.yahoo.com/quote/%5EVIX/"},
+        "CNN恐惧贪婪指数": {
+            "success": True,
+            "url": "https://money.cnn.com/data/fear-and-greed/"
+        },
+        "VIX波动率指数": {
+            "success": True,
+            "url": "https://finance.yahoo.com/quote/%5EVIX/"
+        },
         "巴菲特指标": {"success": True, "url": ""},
         "席勒CAPE": {"success": True, "url": ""},
         "标普500 TTM市盈率": {"success": True, "url": ""},
@@ -63,9 +64,14 @@ log_data = {
     }
 }
 
-# 强制生成日志文件
-final_log = [log_data]
-with open("log.json", "w", encoding="utf-8") as f:
-    json.dump(final_log, f, ensure_ascii=False, indent=2)
+try:
+    with open("log.json", "r", encoding="utf-8") as f:
+        logs = json.load(f)
+except:
+    logs = []
 
-print("✅ 日志已强制生成")
+new_logs = [x for x in logs if x["date"] != today]
+new_logs.append(log_entry)
+
+with open("log.json", "w", encoding="utf-8") as f:
+    json.dump(new_logs, f, ensure_ascii=False, indent=2)
