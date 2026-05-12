@@ -213,7 +213,8 @@ async function loadLog(){
       for(let name in log.sources){
         let s = log.sources[name];
         let icon = s.success ? "✅" : "❌";
-        let link = s.url ? `<a class="log-link" href="${s.url}" target="_blank">官方查询</a>` : "";
+        // 只有拉取失败，且有url的，才显示官方链接
+        let link = (!s.success && s.url) ? `<a class="log-link" href="${s.url}" target="_blank">官方查询</a>` : "";
         html += `<div class="log-item">
                   <span class="log-status">${icon}</span>
                   <span class="log-name">${name}</span>
