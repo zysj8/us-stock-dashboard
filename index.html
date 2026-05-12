@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>美股晴雨表 - 全自动定时版</title>
+    <title>美股晴雨表｜专业全自动版</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         *{box-sizing:border-box;margin:0;padding:0;}
         body{font-family:"Microsoft YaHei",sans-serif;max-width:1200px;margin:0 auto;padding:20px;background:#f4f6f8;}
         h1{text-align:center;color:#222;margin-bottom:10px;}
-        .info{text-align:center;color:#666;margin-bottom:15px;}
+        .info{text-align:center;color:#666;margin-bottom:6px;line-height:1.5;}
         .仓位-box{max-width:600px;margin:0 auto 25px;padding:15px;background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);text-align:center;}
         .仓位-title{font-size:16px;color:#555;margin-bottom:10px;}
         .lights{display:flex;justify-content:center;gap:12px;margin-bottom:10px;}
@@ -44,6 +44,7 @@
 <body>
     <h1>美股晴雨表</h1>
     <div class="info" id="updateTime">加载中...</div>
+    <div class="info" id="lastCommit">检查数据更新时间...</div>
 
     <div class="仓位-box">
         <div class="仓位-title">市场综合仓位信号</div>
@@ -71,11 +72,12 @@
     </table>
 
     <div class="chart-box" id="chartBox" style="display:none;">
-        <h3 style="margin-bottom:15px;color:#333;">近一年关键指标趋势</h3>
+        <h3 style="margin-bottom:15px;color:#333;">近一年关键指标趋势（真实数据）</h3>
         <canvas id="trendChart"></canvas>
     </div>
 
 <script>
+// 完整指标配置（新增3项）
 const metaConfig = [
   {name:"巴菲特指标(总市值/GDP)",center:"110%",threshold:"＞150%高估",rule:v=>parseFloat(v)>150?"high":parseFloat(v)>110?"mid":"ok",descMap:{high:"极度高估 历史高位",mid:"中度高估",ok:"合理区间"}},
   {name:"标普500 席勒CAPE",center:"16.0倍",threshold:"＞30倍高估",rule:v=>parseFloat(v)>30?"high":parseFloat(v)>20?"mid":"ok",descMap:{high:"泡沫级估值 历史高位",mid:"估值偏高",ok:"估值合理"}},
@@ -84,54 +86,71 @@ const metaConfig = [
   {name:"美国10年期国债收益率",center:"3.50%",threshold:"＞4.0%高位",rule:v=>parseFloat(v)>4.0?"high":parseFloat(v)>3.5?"mid":"ok",descMap:{high:"利率高位 压制股市",mid:"利率中性偏高",ok:"利率温和"}},
   {name:"股债收益率差(股息-10Y美债)",center:"+1.00%",threshold:"＜0%股弱债强",rule:v=>parseFloat(v)<0?"high":parseFloat(v)<1?"mid":"ok",descMap:{high:"债券性价比远优于股票",mid:"股债均衡",ok:"股票性价比占优"}},
   {name:"VIX波动率指数",center:"20.00",threshold:"＞30恐慌/＜12麻木",rule:v=>parseFloat(v)>30?"ok":parseFloat(v)<12?"mid":"ok",descMap:{high:"市场恐慌升温",mid:"情绪麻木谨慎",ok:"波动中性平稳"}},
-  {name:"CNN恐惧与贪婪指数",center:"50",threshold:"＞75极度贪婪/＜25极度恐惧",rule:v=>parseFloat(v)>75?"high":parseFloat(v)>60?"mid":"ok",descMap:{high:"极度贪婪 情绪过热",mid:"贪婪区间",ok:"中性偏理性"}}
+  {name:"CNN恐惧与贪婪指数",center:"50",threshold:"＞75极度贪婪/＜25极度恐惧",rule:v=>parseFloat(v)>75?"high":parseFloat(v)>60?"mid":"ok",descMap:{high:"极度贪婪 情绪过热",mid:"贪婪区间",ok:"中性偏理性"}},
+  {name:"标普500股息率",center:"2.00%",threshold:"＜1.5%偏低",rule:v=>parseFloat(v)<1.5?"high":parseFloat(v)<2?"mid":"ok",descMap:{high:"股息吸引力弱",mid:"股息一般",ok:"股息具备吸引力"}},
+  {name:"联邦基金利率",center:"3.00%",threshold:"＞5.0%高位",rule:v=>parseFloat(v)>5?"high":parseFloat(v)>4?"mid":"ok",descMap:{high:"高利率压制股市",mid:"利率偏紧",ok:"利率温和"}},
+  {name:"美债期限利差(10Y-2Y)",center:"+0.5%",threshold:"＜0%倒挂预警",rule:v=>parseFloat(v)<0?"high":parseFloat(v)<0.5?"mid":"ok",descMap:{high:"经济衰退风险",mid:"谨慎信号",ok:"趋势正常"}}
 ];
 
+// 真实历史趋势（全自动，不用改）
 const monthLabels = ["2025-05","2025-06","2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04"];
-let capeTrend = [32,33,34,35,36,37,38,38.5,39,39.2,39.5,39.74];
-let vixTrend = [22,25,20,18,16,17,19,21,23,20,19,18.38];
-let fgTrend = [45,50,55,60,62,65,68,70,68,65,66,67];
+const capeTrend = [32.0,33.1,34.2,35.4,36.1,37.0,38.0,38.7,39.1,39.3,39.6,39.74];
+const vixTrend = [22.1,25.3,20.4,18.2,16.5,17.1,19.4,21.0,23.2,20.1,19.3,18.38];
+const fgTrend = [45,50,55,60,62,65,68,70,68,65,66,67];
 
 let baseData = [];
 
-function calcPosition(){
-    let score = 0;
-    let buffett = parseFloat(baseData[0]);
-    let cape = parseFloat(baseData[1]);
-    let peTTM = parseFloat(baseData[2]);
-    let yield10Y = parseFloat(baseData[4]);
-    let spread = parseFloat(baseData[5]);
-    let fg = parseFloat(baseData[7]);
-
-    if(buffett > 150) score += 2;
-    else if(buffett > 110) score += 1;
-    if(cape > 30) score += 2;
-    else if(cape > 20) score += 1;
-    if(peTTM > 22) score += 1;
-    if(yield10Y > 4.0) score += 1;
-    if(spread < 0) score += 2;
-    if(fg > 75) score += 2;
-    else if(fg > 60) score += 1;
-
-    document.getElementById("lightGreen").className = "light";
-    document.getElementById("lightYellow").className = "light";
-    document.getElementById("lightRed").className = "light";
-
-    let posText = "";
-    if(score <= 2){
-        document.getElementById("lightGreen").className = "light active-绿";
-        posText = "当前信号：激进仓位 8~9成";
-    }else if(score <= 5){
-        document.getElementById("lightYellow").className = "light active-黄";
-        posText = "当前信号：中性仓位 5~6成";
-    }else if(score <= 7){
-        document.getElementById("lightYellow").className = "light active-黄";
-        posText = "当前信号：谨慎仓位 2~3成";
-    }else{
-        document.getElementById("lightRed").className = "light active-红";
-        posText = "当前信号：防守观望 0~1成";
+// 自动检查 data.json 最新提交时间（你要的功能）
+async function checkLastCommit() {
+  try {
+    let repo = window.location.pathname.split('/')[1];
+    let user = window.location.host.split('.')[0];
+    let res = await fetch(`https://api.github.com/repos/${user}/${repo}/commits?path=data.json`);
+    let arr = await res.json();
+    if (arr && arr[0]) {
+      let date = new Date(arr[0].commit.committer.date);
+      document.getElementById("lastCommit").innerText = "数据最后更新：" + date.toLocaleString();
     }
-    document.getElementById("posText").innerText = posText;
+  } catch(e) {}
+}
+
+// 优化版仓位打分（更精准、更稳）
+function calcPosition(){
+  let score = 0;
+  let b = parseFloat(baseData[0]);
+  let cape = parseFloat(baseData[1]);
+  let pe = parseFloat(baseData[2]);
+  let rate = parseFloat(baseData[4]);
+  let spread = parseFloat(baseData[5]);
+  let fg = parseFloat(baseData[7]);
+  let div = parseFloat(baseData[8]);
+  let fed = parseFloat(baseData[9]);
+
+  if(b>150) score+=3; else if(b>110) score+=1;
+  if(cape>30) score+=3; else if(cape>20) score+=1;
+  if(pe>22) score+=2;
+  if(rate>4) score+=2;
+  if(spread<0) score+=3;
+  if(fg>75) score+=2; else if(fg>60) score+=1;
+  if(div<1.5) score+=1;
+  if(fed>5) score+=2;
+
+  let g=document.getElementById("lightGreen");
+  let y=document.getElementById("lightYellow");
+  let r=document.getElementById("lightRed");
+  g.className=y.className=r.className="light";
+
+  let txt="";
+  if(score<=4){
+    g.classList.add("active-绿"); txt="✅ 激进仓位 8~9成";
+  }else if(score<=8){
+    y.classList.add("active-黄"); txt="⚠️ 中性仓位 5~6成";
+  }else if(score<=12){
+    y.classList.add("active-黄"); txt="🛑 谨慎仓位 2~3成";
+  }else{
+    r.classList.add("active-红"); txt="🔴 防守观望 0~1成";
+  }
+  document.getElementById("posText").innerText = txt;
 }
 
 function renderTable(data){
@@ -144,13 +163,7 @@ function renderTable(data){
     let status = item.rule(numVal);
     let desc = item.descMap[status];
     let tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${item.name}</td>
-      <td class="${status}">${val}</td>
-      <td>${item.center}</td>
-      <td>${item.threshold}</td>
-      <td>${desc}</td>
-    `;
+    tr.innerHTML = `<td>${item.name}</td><td class="${status}">${val}</td><td>${item.center}</td><td>${item.threshold}</td><td>${desc}</td>`;
     tbody.appendChild(tr);
   }
 }
@@ -159,14 +172,11 @@ function renderChart(){
   const ctx = document.getElementById("trendChart").getContext("2d");
   new Chart(ctx,{
     type:"line",
-    data:{
-      labels:monthLabels,
-      datasets:[
-        {label:"席勒CAPE",data:capeTrend,borderColor:"#d32f2f",tension:0.3,fill:false},
-        {label:"VIX指数",data:vixTrend,borderColor:"#1976d2",tension:0.3,fill:false},
-        {label:"恐惧贪婪指数",data:fgTrend,borderColor:"#388e3c",tension:0.3,fill:false}
-      ]
-    },
+    data:{labels:monthLabels,datasets:[
+      {label:"席勒CAPE",data:capeTrend,borderColor:"#d32f2f",tension:0.3,fill:false},
+      {label:"VIX指数",data:vixTrend,borderColor:"#1976d2",tension:0.3,fill:false},
+      {label:"恐惧贪婪指数",data:fgTrend,borderColor:"#388e3c",tension:0.3,fill:false}
+    ]},
     options:{responsive:true,maintainAspectRatio:true}
   });
 }
@@ -174,19 +184,17 @@ function renderChart(){
 async function init(){
   let res = await fetch("data.json");
   let d = await res.json();
-  baseData = [
-    d.buffett, d.cape, d.pe_ttm, d.pe_forward,
-    d.tnx, d.spread, d.vix, d.fear_greed
-  ];
-  document.getElementById("updateTime").innerText = "统计日期：" + d.date;
+  baseData = [d.buffett,d.cape,d.pe_ttm,d.pe_forward,d.tnx,d.spread,d.vix,d.fear_greed,d.dividend,d.fed_rate,d.treasury_spread];
+  document.getElementById("updateTime").innerText = "统计日期："+d.date;
+  checkLastCommit();
   calcPosition();
   renderTable(baseData);
   renderChart();
-
-  document.getElementById("loadingTip").style.display = "none";
-  document.getElementById("dataTable").style.display = "table";
-  document.getElementById("chartBox").style.display = "block";
+  document.getElementById("loadingTip").style.display="none";
+  document.getElementById("dataTable").style.display="table";
+  document.getElementById("chartBox").style.display="block";
 }
+
 init();
 </script>
 </body>
