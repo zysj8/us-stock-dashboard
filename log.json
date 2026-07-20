@@ -3183,5 +3183,54 @@
         "url": ""
       }
     }
+  },
+  {
+    "date": "2026-07-20",
+    "sources": {
+      "CNN恐惧贪婪指数": {
+        "success": true,
+        "url": "https://money.cnn.com/data/fear-and-greed/"
+      },
+      "VIX波动率指数": {
+        "success": true,
+        "url": "https://finance.yahoo.com/quote/%5EVIX/"
+      },
+      "巴菲特指标": {
+        "success": true,
+        "url": ""
+      },
+      "席勒CAPE": {
+        "success": true,
+        "url": ""
+      },
+      "标普500 TTM市盈率": {
+        "success": true,
+        "url": ""
+      },
+      "标普500预估市盈率": {
+        "success": true,
+        "url": ""
+      },
+      "10年期美债收益率": {
+        "success": true,
+        "url": ""
+      },
+      "股债收益率差": {
+        "success": true,
+        "url": ""
+      },
+      "标普500股息率": {
+        "success": true,
+        "url": ""
+      },
+      "联邦基金利率": {
+        "success": true,
+        "url": ""
+      },
+      "美债期限利差": {
+        "success": true,
+        "url": ""
+      }
+    }
   }
 ]
